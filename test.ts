@@ -27,17 +27,24 @@ const testProgram = Effect.gen(function* () {
     // Test expert prompt generation
     const mockContext = {
       task: "create a modern web application",
-      outputType: "react_app",
+      outputType: "react_app", 
       constraints: { environment: "production" },
       preferences: { tech_stack: "React" },
-      inspirationSeeds: ["Material Design principles"]
+      inspirationSeeds: ["Material Design principles"],
+      mode: "explore" as const,
+      rounds: [
+        { focus: "concepts", lead: "DesignPhilosopher" },
+        { focus: "experience_goals", lead: "ExperienceArchitect" },
+        { focus: "technical_bridge", lead: "TechnicalPoet" }
+      ]
     }
     
     const { systemPrompt, userPrompt } = experts.generateRoundPrompt(
       { focus: "historical_grounding", lead: "DesignPhilosopher" },
       ["DesignPhilosopher", "ExperienceArchitect"],
       mockContext,
-      {}
+      {},
+      "explore"
     )
     
     yield* Console.log(`✅ Expert prompt generated successfully`)

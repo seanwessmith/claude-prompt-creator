@@ -4,6 +4,7 @@ import { CLIService } from "../services/CLIService"
 import { FileService } from "../services/FileService"
 import { MemoryService } from "../services/MemoryService"
 import { ExpertRegistry } from "./ExpertRegistry"
+import { inferModeWithAI, planRounds, type Mode, type Round } from "./ModeInference"
 import chalk from "chalk"
 
 export interface TaskContext {
@@ -12,6 +13,8 @@ export interface TaskContext {
   constraints: Record<string, any>
   preferences: Record<string, any>
   inspirationSeeds: any[]
+  mode: Mode
+  rounds: Round[]
 }
 
 export interface Philosophy {
@@ -57,7 +60,8 @@ export class CreativeAILoop extends Context.Tag("CreativeAILoop")<
             const taskContext = yield* interactiveTaskAnalysis(
               initialPrompt,
               cli,
-              memory
+              memory,
+              openai
             )
 
             // Phase 1: Deep Conceptual Development
@@ -108,11 +112,21 @@ export class CreativeAILoop extends Context.Tag("CreativeAILoop")<
 function interactiveTaskAnalysis(
   initialPrompt: string,
   cli: CLIService.Service,
-  memory: MemoryService.Service
+  memory: MemoryService.Service,
+  openai: OpenAIService.Service
 ) {
   return Effect.gen(function*() {
-    // Generate clarifying questions based on the task
-    const questions = generateClarifyingQuestions(initialPrompt)
+    // Infer mode using AI
+    yield* Console.log(chalk.blue("🎯 Analyzing task mode..."))
+    const mode = yield* inferModeWithAI(initialPrompt, openai)
+    yield* Console.log(chalk.green(`Mode detected: ${mode.toUpperCase()}`))
+    
+    // Plan rounds based on mode
+    const rounds = planRounds(mode)
+    yield* Console.log(chalk.gray(`Planned ${rounds.length} rounds: ${rounds.map(r => r.focus).join(" → ")}`))
+
+    // Generate clarifying questions based on the task and mode
+    const questions = generateClarifyingQuestions(initialPrompt, mode)
 
     // Ask questions interactively
     const responses = yield* cli.askQuestions(questions)
@@ -128,7 +142,9 @@ function interactiveTaskAnalysis(
       outputType,
       constraints: responses.constraints || {},
       preferences: responses.preferences || {},
-      inspirationSeeds
+      inspirationSeeds,
+      mode,
+      rounds
     } as TaskContext
   })
 }
@@ -141,24 +157,21 @@ function developConcept(
   memory: MemoryService.Service
 ) {
   return Effect.gen(function*() {
-    const conceptualExperts = experts.selectConceptualExperts(context)
-
-    const rounds = [
-      { focus: "historical_grounding", lead: "DesignPhilosopher" },
-      { focus: "emotional_resonance", lead: "ExperienceArchitect" },
-      { focus: "technical_bridge", lead: "TechnicalPoet" }
-    ]
-
     const philosophy: Philosophy = {}
     let previousResponseId: string | undefined
 
-    for (const round of rounds) {
+    // Use mode-planned rounds instead of hardcoded ones
+    for (const round of context.rounds) {
+      // Select experts for this round based on mode and focus
+      const roundExperts = experts.selectExpertsForRound(round, context.mode, context)
+      
       // Generate expert discussion for this round
       const { systemPrompt, userPrompt } = experts.generateRoundPrompt(
         round,
-        conceptualExperts,
+        roundExperts,
         context,
-        philosophy
+        philosophy,
+        context.mode
       )
 
       yield* Console.log(chalk.blue(`  → ${round.lead} leading ${round.focus} discussion`))
@@ -186,8 +199,8 @@ function developConcept(
         responseId: response.responseId
       })
 
-      // Check if user wants to steer at key points
-      if (shouldCheckWithUser(round)) {
+      // Check if user wants to steer at key points (mode-aware)
+      if (shouldCheckWithUser(round, context.mode)) {
         const feedback = yield* cli.getUserFeedback(
           round.focus,
           synthesis
@@ -333,24 +346,40 @@ Format as actionable markdown for immediate execution.`
   })
 }
 
-function generateClarifyingQuestions(task: string): string[] {
+function generateClarifyingQuestions(task: string, mode: Mode): string[] {
   const questions = []
 
-  // Always ask about purpose
-  questions.push("Is this for production, experimentation, or learning?")
-
-  // Check for visual/UI tasks
-  if (task.match(/ui|interface|design|app|website|frontend/i)) {
-    questions.push("What emotional tone should this convey? (professional, playful, minimal, bold)")
+  switch (mode) {
+    case "pr":
+      questions.push("What files or components need to be modified?")
+      questions.push("Are there specific acceptance criteria or requirements?")
+      questions.push("What's the expected timeline? (quick fix, careful implementation, or thorough testing)")
+      break
+      
+    case "design_review":
+      questions.push("What aspects need review? (consistency, performance, maintainability, or all)")
+      questions.push("Are there specific pain points or issues you've noticed?")
+      questions.push("What's the scope? (single component, feature area, or full system)")
+      break
+      
+    case "explore":
+      // Always ask about purpose for exploration
+      questions.push("Is this for inspiration, research, or concept development?")
+      
+      // Check for visual/UI tasks
+      if (task.match(/ui|interface|design|app|website|frontend|visual|theme/i)) {
+        questions.push("What emotional tone should this convey? (professional, playful, minimal, bold)")
+      }
+      
+      // Check for data tasks
+      if (task.match(/data|api|backend|database|process/i)) {
+        questions.push("What scale of data will this handle? (small/personal, medium/team, large/enterprise)")
+      }
+      
+      // Always offer tech stack choice for exploration
+      questions.push("Preferred technology stack? (or type 'surprise me' for recommendation)")
+      break
   }
-
-  // Check for data tasks
-  if (task.match(/data|api|backend|database|process/i)) {
-    questions.push("What scale of data will this handle? (small/personal, medium/team, large/enterprise)")
-  }
-
-  // Always offer tech stack choice
-  questions.push("Preferred technology stack? (or type 'surprise me' for recommendation)")
 
   return questions
 }
@@ -363,8 +392,23 @@ function inferOutputType(task: string, responses: any): string {
   return "general"
 }
 
-function shouldCheckWithUser(round: { focus: string }): boolean {
-  return ["emotional_resonance", "technical_bridge"].includes(round.focus)
+function shouldCheckWithUser(round: { focus: string }, mode: Mode): boolean {
+  // Only check with user in explore mode for creative decisions
+  if (mode === "explore") {
+    return ["concepts", "experience_goals", "technical_bridge"].includes(round.focus)
+  }
+  
+  // In PR mode, check before implementation and PR summary
+  if (mode === "pr") {
+    return ["impl", "pr_summary"].includes(round.focus)
+  }
+  
+  // In design review mode, check after design principles
+  if (mode === "design_review") {
+    return ["design_principles"].includes(round.focus)
+  }
+  
+  return false
 }
 
 function extractSynthesis(content: string): string {

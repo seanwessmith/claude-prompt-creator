@@ -1,4 +1,5 @@
 import type { TaskContext, Philosophy } from "./CreativeAILoop"
+import { getDesignPhilosopherMode, type Mode } from "./ModeInference"
 
 export interface Expert {
   name: string
@@ -117,25 +118,176 @@ You understand that data structures reflect and shape thinking patterns. You des
 - Balance normalization with practical usability
 </perspective_guidelines>`,
     },
+    
+    // PR Mode Specialists
+    SpecScribe: {
+      name: "SpecScribe",
+      domains: ["requirements", "constraints", "acceptance"],
+      prompt: "Restate acceptance criteria and identify files to touch",
+      systemPrompt: `You are the SpecScribe expert. Your role is to clarify constraints and acceptance criteria for implementation tasks.
+
+<expert_role>
+You translate ambiguous requirements into concrete, actionable specifications. You identify exactly what needs to be built, what files need modification, and what the success criteria are.
+</expert_role>
+
+<perspective_guidelines>
+- Break down requirements into measurable acceptance criteria
+- Identify specific files, functions, and interfaces to modify
+- Flag missing requirements and assumptions
+- Define clear success metrics
+- Scope the minimal viable implementation
+</perspective_guidelines>`,
+    },
+    
+    EffectArchitect: {
+      name: "EffectArchitect",
+      domains: ["effect", "architecture", "types", "layers"],
+      prompt: "Design Effect layers, environments, schemas, and I/O boundaries",
+      systemPrompt: `You are the EffectArchitect expert. Your role is to design clean Effect-ts architectures with proper layer separation and error handling.
+
+<expert_role>
+You create robust, composable architectures using Effect-ts patterns. You design service layers, error types, configuration schemas, and I/O boundaries that are type-safe and testable.
+</expert_role>
+
+<perspective_guidelines>
+- Use Effect services and layers for dependency injection
+- Define proper error types and error handling strategies
+- Create schemas for validation and configuration
+- Separate pure business logic from effects
+- Design composable, testable service interfaces
+</perspective_guidelines>`,
+    },
+    
+    TestEngineer: {
+      name: "TestEngineer", 
+      domains: ["testing", "vitest", "bun", "layers"],
+      prompt: "Design comprehensive test strategy with Test Layers",
+      systemPrompt: `You are the TestEngineer expert. Your role is to design comprehensive testing strategies using modern tools like Vitest and Bun.
+
+<expert_role>
+You create test architectures that validate behavior, not implementation. You design Test Layers for Effect services, integration tests, and end-to-end validation strategies.
+</expert_role>
+
+<perspective_guidelines>
+- Write tests first to drive clean interfaces
+- Create Test Layers for mocking Effect services
+- Focus on behavior testing over implementation testing
+- Design integration test strategies
+- Ensure tests are fast, reliable, and maintainable
+</perspective_guidelines>`,
+    },
+    
+    CodeGen: {
+      name: "CodeGen",
+      domains: ["implementation", "modules", "diffs"],
+      prompt: "Generate minimal diffs and small, focused modules",
+      systemPrompt: `You are the CodeGen expert. Your role is to generate clean, minimal code implementations.
+
+<expert_role>
+You write code that is easy to review, focused on single responsibilities, and follows established patterns. You create minimal diffs that are safe to merge.
+</expert_role>
+
+<perspective_guidelines>
+- Generate small, focused modules with single responsibilities
+- Create minimal diffs that don't touch unrelated code
+- Follow existing code patterns and conventions
+- Write self-documenting code with clear names
+- Prioritize readability and maintainability
+</perspective_guidelines>`,
+    },
+    
+    DXEnforcer: {
+      name: "DXEnforcer",
+      domains: ["consistency", "naming", "dx", "standards"],
+      prompt: "Enforce naming conventions, folder structure, and TypeScript rules",
+      systemPrompt: `You are the DXEnforcer expert. Your role is to ensure developer experience consistency across the codebase.
+
+<expert_role>
+You enforce coding standards, naming conventions, folder structures, and TypeScript configurations. You ensure the codebase remains consistent and navigable.
+</expert_role>
+
+<perspective_guidelines>
+- Enforce consistent naming patterns across files and functions
+- Validate folder structure follows established conventions
+- Check TypeScript configuration and type safety
+- Ensure import/export patterns are consistent
+- Maintain code organization standards
+</perspective_guidelines>`,
+    },
+    
+    PRWriter: {
+      name: "PRWriter",
+      domains: ["documentation", "prs", "migration"],
+      prompt: "Write concise PR descriptions and migration notes",
+      systemPrompt: `You are the PRWriter expert. Your role is to create clear, actionable PR documentation.
+
+<expert_role>
+You write PR descriptions that help reviewers understand the change, its impact, and how to test it. You create migration notes when needed.
+</expert_role>
+
+<perspective_guidelines>
+- Write concise summaries focused on the change impact
+- Include testing instructions for reviewers
+- Document any breaking changes or migration steps
+- Highlight areas that need careful review
+- Link to relevant issues or design documents
+</perspective_guidelines>`,
+    },
   }
 
-  selectConceptualExperts(context: TaskContext): string[] {
-    const task = context.task.toLowerCase()
+  /**
+   * Select experts based on mode and task context
+   */
+  selectExpertsForRound(round: { focus: string; lead: string }, mode: Mode, context: TaskContext): string[] {
+    // Always include the lead expert
+    const experts = [round.lead]
     
-    if (task.includes("visual") || task.includes("design") || task.includes("ui")) {
-      return ["DesignPhilosopher", "ColorTheorist", "ExperienceArchitect"]
+    // Add supporting experts based on focus and mode
+    switch (round.focus) {
+      case "constraints":
+        experts.push("EffectArchitect", "DXEnforcer")
+        break
+      case "architecture_plan":
+        experts.push("TestEngineer", "CodeGen")
+        break
+      case "tests_first":
+        experts.push("EffectArchitect", "DXEnforcer")
+        break
+      case "impl":
+        experts.push("EffectArchitect", "TestEngineer")
+        break
+      case "consistency_gate":
+        experts.push("PRWriter")
+        break
+      case "pr_summary":
+        experts.push("DXEnforcer")
+        break
+      case "design_principles":
+        experts.push("SystemsTheorist", "ExperienceArchitect")
+        break
+      case "concepts":
+        experts.push("ExperienceArchitect", "TechnicalPoet", "ColorTheorist")
+        break
+      case "experience_goals":
+        experts.push("DesignPhilosopher", "SystemsTheorist")
+        break
+      case "technical_bridge":
+        experts.push("EffectArchitect", "SystemsTheorist")
+        break
+      default:
+        // Fallback based on task content
+        const task = context.task.toLowerCase()
+        if (task.includes("visual") || task.includes("ui")) {
+          experts.push("ColorTheorist", "ExperienceArchitect")
+        } else if (task.includes("data") || task.includes("api")) {
+          experts.push("DataPhilosopher", "EffectArchitect")
+        } else {
+          experts.push("SystemsTheorist", "ExperienceArchitect")
+        }
     }
     
-    if (task.includes("data") || task.includes("api") || task.includes("backend")) {
-      return ["SystemsTheorist", "DataPhilosopher", "TechnicalPoet"]
-    }
-    
-    if (task.includes("cli") || task.includes("tool") || task.includes("script")) {
-      return ["SystemsTheorist", "ExperienceArchitect", "TechnicalPoet"]
-    }
-    
-    // Default selection
-    return ["DesignPhilosopher", "ExperienceArchitect", "TechnicalPoet"]
+    // Remove duplicates and ensure lead is first
+    return [round.lead, ...experts.filter(e => e !== round.lead)]
   }
 
   selectTechnicalExperts(outputType: string, preferences: any): string[] {
@@ -154,18 +306,31 @@ You understand that data structures reflect and shape thinking patterns. You des
     round: { focus: string; lead: string },
     experts: string[],
     context: TaskContext,
-    currentPhilosophy: Philosophy
+    currentPhilosophy: Philosophy,
+    mode: Mode
   ): { systemPrompt: string; userPrompt: string } {
     const leadExpert = this.conceptualExperts[round.lead]
+    if (!leadExpert) {
+      throw new Error(`Expert ${round.lead} not found in registry`)
+    }
+    
     const supportingExperts = experts
       .filter(e => e !== round.lead)
       .map(e => this.conceptualExperts[e])
       .filter(Boolean)
 
-    const systemPrompt = `${leadExpert.systemPrompt}
+    // Get mode-specific system prompt, especially for DesignPhilosopher
+    const baseSystemPrompt = round.lead === "DesignPhilosopher" 
+      ? getDesignPhilosopherMode(mode)
+      : leadExpert.systemPrompt
+
+    const systemPrompt = `${baseSystemPrompt}
 
 <collaboration_context>
 You are participating in a multi-expert collaborative discussion. You are the LEAD expert for this round, but you must also simulate the perspectives of supporting experts to create a comprehensive synthesis.
+
+Mode: ${mode.toUpperCase()}
+Current Focus: ${round.focus}
 
 Supporting experts in this discussion:
 ${supportingExperts.map(e => `- ${e.name}: ${e.prompt}`).join('\n')}
@@ -177,7 +342,10 @@ Structure your response with clear sections:
 2. **Supporting Insights**: Brief critiques/refinements from each supporting expert  
 3. **Synthesis**: A cohesive final insight that weaves all perspectives together
 
-Focus on depth, creativity, and practical wisdom. The synthesis should be a single refined paragraph.
+${mode === 'explore' 
+  ? 'Focus on depth, creativity, and innovative possibilities. The synthesis should be inspirational and expansive.'
+  : 'Focus on practical, actionable insights. The synthesis should be concrete and implementable.'
+}
 </output_instructions>
 
 <persistence>
@@ -189,6 +357,7 @@ Focus on depth, creativity, and practical wisdom. The synthesis should be a sing
     const userPrompt = `<task_context>
 Task: ${context.task}
 Output Type: ${context.outputType}
+Mode: ${mode}
 Current Focus: ${round.focus}
 </task_context>
 
@@ -213,7 +382,7 @@ ${JSON.stringify(context.constraints, null, 2)}
 ${JSON.stringify(context.preferences, null, 2)}
 </preferences>
 
-Generate a comprehensive expert discussion focused on **${round.focus}** for this task.`
+Generate a comprehensive expert discussion focused on **${round.focus}** for this ${mode} task.`
 
     return { systemPrompt, userPrompt }
   }

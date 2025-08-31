@@ -34,16 +34,44 @@ chmod +x src/index.ts
 
 ## How It Works
 
-The system simulates a collaborative discussion between different expert personas using **GPT-5 with high reasoning effort**:
+The system uses **AI-powered mode inference** to intelligently adapt its workflow, then simulates collaborative discussions between specialized expert personas using **GPT-5 with high reasoning effort**.
 
-- **DesignPhilosopher** - Finds deeper meaning and historical resonance
-- **ExperienceArchitect** - Defines how it should feel to use
+### **🎯 Intelligent Mode Detection**
+
+GPT-5 automatically classifies your task into one of three modes:
+
+- **`PR`** - Implementation, feature development, bug fixes, building something new
+- **`DESIGN_REVIEW`** - Reviewing, auditing, refactoring, improving existing systems  
+- **`EXPLORE`** - Brainstorming, conceptual exploration, creative ideation, research
+
+### **🔄 Mode-Specific Workflows**
+
+Each mode uses specialized expert teams and workflows:
+
+**PR Mode (6 rounds):**
+`SpecScribe(constraints) → EffectArchitect(architecture_plan) → TestEngineer(tests_first) → CodeGen(impl) → DXEnforcer(consistency_gate) → PRWriter(pr_summary)`
+
+**Design Review Mode (3 rounds):**
+`DesignPhilosopher(design_principles) → EffectArchitect(architecture_plan) → DXEnforcer(consistency_gate)`
+
+**Explore Mode (3 rounds):**
+`DesignPhilosopher(concepts) → ExperienceArchitect(experience_goals) → TechnicalPoet(technical_bridge)`
+
+### **👥 Expert Personas**
+
+**Core Experts:**
+- **DesignPhilosopher** - *Mode-adaptive:* Principles-only in PR/Review, creative exploration in Explore
+- **ExperienceArchitect** - Defines emotional journey and workflow patterns
 - **SystemsTheorist** - Identifies elegant organizational principles
 - **TechnicalPoet** - Bridges conceptual beauty with technical pragmatism
-- **ColorTheorist** - Understands visual harmony and psychology
-- **DataPhilosopher** - Designs intuitive information architectures
 
-Each expert contributes through structured XML prompts optimized for GPT-5, with **high reasoning effort** for deep thinking and the **Responses API** for context persistence. The system tracks all expert interactions and provides detailed summaries of insights and call counts.
+**PR Mode Specialists:**
+- **SpecScribe** - Clarifies constraints and acceptance criteria
+- **EffectArchitect** - Designs Effect-ts layers, schemas, and I/O boundaries
+- **TestEngineer** - Creates comprehensive test strategies with Test Layers
+- **CodeGen** - Generates minimal, focused code implementations
+- **DXEnforcer** - Enforces consistency, naming, and TypeScript standards
+- **PRWriter** - Creates clear PR documentation and migration notes
 
 ## Memory System
 
@@ -68,9 +96,24 @@ Built with:
 
 ## GPT-5 Optimization Features
 
-- **High Reasoning Effort** - Deep conceptual development
-- **XML-Structured Prompts** - Better instruction adherence
-- **Responses API Integration** - Persistent reasoning context
-- **Expert Interaction Tracking** - Detailed call counts and insights
-- **Adaptive Verbosity** - Minimal status updates, detailed technical output
-- **Autonomous Expert Discussions** - Maintains user steering at key decision points
+- **🧠 AI Mode Inference** - Intelligent workflow adaptation based on task analysis
+- **⚙️ High Reasoning Effort** - Deep conceptual development and problem-solving
+- **📋 XML-Structured Prompts** - Better instruction adherence and consistency
+- **🔗 Responses API Integration** - Persistent reasoning context between expert rounds
+- **📊 Expert Interaction Tracking** - Detailed call counts and insights per expert
+- **🎚️ Adaptive Verbosity** - Minimal status updates, detailed technical output
+- **🎯 Mode-Specific Behavior** - DesignPhilosopher switches between principles-only and creative modes
+- **🤝 Smart User Steering** - Interactive guidance at optimal decision points per mode
+
+## Testing
+
+```bash
+# Test mode inference and workflows
+bun run mode-test.ts
+
+# Test basic GPT-5 integration  
+bun run test.ts
+
+# Run the full system
+bun run src/index.ts
+```

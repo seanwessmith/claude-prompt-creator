@@ -1,6 +1,6 @@
-import { Effect, Context, Layer } from "effect"
-import { input, select, confirm } from "@inquirer/prompts"
+import { confirm, input } from "@inquirer/prompts"
 import chalk from "chalk"
+import { Context, Effect, Layer } from "effect"
 
 export class CLIService extends Context.Tag("CLIService")<
   CLIService,
@@ -19,25 +19,25 @@ export class CLIService extends Context.Tag("CLIService")<
             console.log(chalk.cyan("\n🎨 Creative AI Loop - Deep Design Through Expert Collaboration\n"))
             return await input({
               message: "What would you like to create?",
-              default: "",
+              default: ""
             })
           },
-          catch: (error) => new Error(`Failed to get input: ${error}`),
+          catch: (error) => new Error(`Failed to get input: ${error}`)
         }),
-      
+
       askQuestions: (questions: string[]) =>
-        Effect.gen(function* () {
+        Effect.gen(function*() {
           const responses: any = {
             constraints: {},
-            preferences: {},
+            preferences: {}
           }
-          
+
           for (const question of questions) {
             const answer = yield* Effect.tryPromise({
               try: () => input({ message: question }),
-              catch: (error) => new Error(`Failed to get input: ${error}`),
+              catch: (error) => new Error(`Failed to get input: ${error}`)
             })
-            
+
             // Parse responses into constraints or preferences
             if (question.includes("production")) {
               responses.constraints.environment = answer
@@ -49,35 +49,37 @@ export class CLIService extends Context.Tag("CLIService")<
               responses.preferences.tech_stack = answer
             }
           }
-          
+
           return responses
         }),
-      
+
       getUserFeedback: (focus: string, current: string) =>
-        Effect.gen(function* () {
+        Effect.gen(function*() {
           console.log(chalk.yellow(`\n📝 Current ${focus}:`))
           console.log(chalk.gray(current))
-          
+
           const shouldEdit = yield* Effect.tryPromise({
-            try: () => confirm({
-              message: `Would you like to refine the ${focus}?`,
-              default: false,
-            }),
-            catch: (error) => new Error(`Failed to get confirmation: ${error}`),
+            try: () =>
+              confirm({
+                message: `Would you like to refine the ${focus}?`,
+                default: false
+              }),
+            catch: (error) => new Error(`Failed to get confirmation: ${error}`)
           })
-          
+
           if (shouldEdit) {
             return yield* Effect.tryPromise({
-              try: () => input({
-                message: `Enter your refined ${focus}:`,
-                default: current,
-              }),
-              catch: (error) => new Error(`Failed to get input: ${error}`),
+              try: () =>
+                input({
+                  message: `Enter your refined ${focus}:`,
+                  default: current
+                }),
+              catch: (error) => new Error(`Failed to get input: ${error}`)
             })
           }
-          
+
           return null
-        }),
+        })
     }
   )
 }
