@@ -259,7 +259,7 @@ def generate_clarifying_questions(task):
         questions.append("What scale of data will this handle?")
     
     if not detect_tech_stack(task):
-        questions.append("Preferred technology stack? (or 'surprise me')")
+        questions.append("Preferred technology stack? (defaults to Bun, TypeScript, Effect)")
     
     return questions
 

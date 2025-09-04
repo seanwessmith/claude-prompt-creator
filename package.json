@@ -8,22 +8,22 @@
     "dev": "bun --watch src/index.ts"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "^1.2.21"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^5.9.2"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.60.0",
+    "@anthropic-ai/sdk": "^0.61.0",
     "@effect/cli": "^0.69.2",
     "@effect/platform": "^0.90.6",
-    "@effect/platform-node": "^0.96.0",
+    "@effect/platform-node": "^0.96.1",
     "@inquirer/prompts": "^7.8.4",
     "@types/sqlite3": "^5.1.0",
     "chalk": "^5.6.0",
     "dprint": "^0.50.1",
-    "effect": "^3.17.9",
-    "openai": "^5.16.0",
+    "effect": "^3.17.11",
+    "openai": "^5.19.0",
     "sqlite3": "^5.1.7"
   }
 }
